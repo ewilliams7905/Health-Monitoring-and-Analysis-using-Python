@@ -1,6 +1,94 @@
-#import Python libraries and the dataset
+# Python-Health-Monitoring-Cluster-Analysis
+-- PROJECT: Health Monitoring via Unsupervised Learning
+-- DATA SOURCE: Local CSV (healthmonitoring.csv)
+
+-- --------------------------------------------------------------------------------
+-- STEP 1: Load Data and Preview Structure
+-- --------------------------------------------------------------------------------
 import pandas as pd
 health_data = pd.read_csv('healthmonitoring.csv')
 print(health_data.head())
+
+-- Purpose: Load patient metrics including heart rate, BP, temperature, etc.
+
+-- --------------------------------------------------------------------------------
+-- STEP 2: Null Values Check
+-- --------------------------------------------------------------------------------
+health_data.isnull().sum()
+
+-- Purpose: Identify missing values for cleaning.
+
+-- --------------------------------------------------------------------------------
+-- STEP 3: Fill Nulls with Median (BodyTemperature & OxygenSaturation)
+-- --------------------------------------------------------------------------------
+median_body_temp = health_data['BodyTemperature'].median()
+median_oxygen_sat = health_data['OxygenSaturation'].median()
+
+health_data.fillna({
+    'BodyTemperature': median_body_temp,
+    'OxygenSaturation': median_oxygen_sat
+}, inplace=True)
+
+-- Purpose: Prevent data loss while ensuring statistical integrity.
+
+-- --------------------------------------------------------------------------------
+-- STEP 4: Extract Systolic and Diastolic from BloodPressure Column
+-- --------------------------------------------------------------------------------
+health_data[['SystolicBP', 'DiastolicBP']] = health_data['BloodPressure'].str.extract(r'(\\d+)[^\\d]+(\\d+)').astype(float)
+health_data.drop(columns='BloodPressure', inplace=True)
+
+-- Purpose: Standardize inconsistent BP formats into numerical columns.
+
+-- --------------------------------------------------------------------------------
+-- STEP 5: Drop Irrelevant or Non-Numerical Columns for Clustering
+-- --------------------------------------------------------------------------------
+features = health_data.drop(columns=['PatientID', 'Timestamp', 'Gender', 'ActivityLevel', 'SleepQuality', 'StressLevel'])
+
+-- These features won't contribute meaningfully to unsupervised clustering.
+
+-- --------------------------------------------------------------------------------
+-- STEP 6: Standardize Features for Clustering
+-- --------------------------------------------------------------------------------
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+scaled_features = scaler.fit_transform(features)
+
+-- StandardScaler ensures all features contribute equally.
+
+-- --------------------------------------------------------------------------------
+-- STEP 7: Elbow Method to Determine Optimal K
+-- --------------------------------------------------------------------------------
+from sklearn.cluster import KMeans
+inertia = []
+for k in range(1, 11):
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(scaled_features)
+    inertia.append(kmeans.inertia_)
+
+-- Plot inertia vs. k to identify the “elbow” point (optimal clusters).
+
+-- --------------------------------------------------------------------------------
+-- STEP 8: Fit KMeans with Optimal Clusters
+-- --------------------------------------------------------------------------------
+kmeans = KMeans(n_clusters=3, random_state=42)
+health_data['Cluster'] = kmeans.fit_predict(scaled_features)
+
+-- Clustering patients based on health profiles.
+
+-- --------------------------------------------------------------------------------
+-- STEP 9: Analyze Cluster Profiles
+-- --------------------------------------------------------------------------------
+cluster_summary = health_data.groupby('Cluster').mean(numeric_only=True)
+print(cluster_summary)
+
+-- Purpose: Understand average metrics within each patient cluster for health insights.
+
+-- --------------------------------------------------------------------------------
+-- OPTIONAL: Export Clustered Data to CSV for External Use
+-- --------------------------------------------------------------------------------
+health_data.to_csv("clustered_health_data.csv", index=False)
+
+-- This output can be used for dashboarding or reporting.
+
 
 
