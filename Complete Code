@@ -1,0 +1,6 @@
+#import Python libraries and the dataset
+import pandas as pd
+health_data = pd.read_csv('healthmonitoring.csv')
+print(health_data.head())
+
+
